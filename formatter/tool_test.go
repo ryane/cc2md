@@ -299,3 +299,45 @@ func TestFormatToolCalls_CommonMark(t *testing.T) {
 		}
 	})
 }
+
+func TestFormatToolCalls_Obsidian(t *testing.T) {
+	t.Run("collapse wraps tool calls in a foldable callout, not <details>", func(t *testing.T) {
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("output"))},
+			ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorObsidian},
+		)
+		if strings.Contains(result, "<details>") {
+			t.Errorf("Obsidian should not produce <details>, got: %s", result)
+		}
+		if !strings.HasPrefix(result, "> [!example]- Tool call (1)\n") {
+			t.Errorf("expected foldable callout header, got: %s", result)
+		}
+		if !strings.Contains(result, "> - **Bash** `ls`") {
+			t.Errorf("expected callout-prefixed Bash entry, got: %s", result)
+		}
+	})
+
+	t.Run("every line of tool body is prefixed with > including code fences", func(t *testing.T) {
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("a\nb"))},
+			ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorObsidian},
+		)
+		for _, line := range strings.Split(result, "\n") {
+			if line == "" {
+				t.Errorf("expected no bare blank lines (use '>' instead), got: %s", result)
+			}
+			if !strings.HasPrefix(line, ">") {
+				t.Errorf("every line must start with '>' for Obsidian callout, got line %q in: %s", line, result)
+			}
+		}
+	})
+
+	t.Run("collapse off produces same output as GFM", func(t *testing.T) {
+		calls := []parser.LinkedToolCall{makeCall("Read", map[string]interface{}{"file_path": "a.ts"}, nil)}
+		gfm := FormatToolCalls(calls, ToolFormatOptions{Collapse: false, MaxLines: 50, Flavor: FlavorGFM})
+		obs := FormatToolCalls(calls, ToolFormatOptions{Collapse: false, MaxLines: 50, Flavor: FlavorObsidian})
+		if gfm != obs {
+			t.Errorf("expected identical output without collapse:\ngfm: %s\nobs: %s", gfm, obs)
+		}
+	})
+}

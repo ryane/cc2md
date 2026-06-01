@@ -35,6 +35,10 @@ func FormatThinking(blocks []string, collapse bool, flavor MarkdownFlavor) strin
 		return "**Thinking:**\n\n" + combined
 	}
 
+	if flavor == FlavorObsidian {
+		return "> [!note]- Thinking\n" + prefixLinesObsidian(combined)
+	}
+
 	return strings.Join([]string{
 		"<details>",
 		"<summary>Thinking</summary>",

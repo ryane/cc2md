@@ -74,7 +74,7 @@ cc2md list [project]         List available sessions, optionally filter by proje
 | `--thinking` | `-t` | | Include thinking blocks |
 | `--collapse` | `-c` | `true` | Collapse tool calls into `<details>` tags |
 | `--max-lines` | | `100` | Max lines per tool output before truncation |
-| `--markdown` | `-m` | | Markdown flavor: `gfm`, `commonmark` |
+| `--markdown` | `-m` | | Markdown flavor: `gfm`, `commonmark`, `obsidian` |
 
 **List subcommand**
 
@@ -95,6 +95,7 @@ By default, `cc2md` uses **CommonMark** for terminal rendering and **GFM** when 
 
 - `gfm` — GitHub Flavored Markdown: `> [!NOTE]` alerts, `<details>` tags
 - `commonmark` — Portable markdown: `> **Note:**` blockquotes, expanded sections
+- `obsidian` — Same as `gfm` but tool calls and thinking use foldable `> [!example]-` callouts instead of `<details>` (Obsidian renders markdown inside `<details>` poorly)
 
 ## Examples
 
@@ -110,6 +111,9 @@ cc2md session.jsonl --output session.md
 
 # Export with explicit GFM flavor
 cc2md session.jsonl --raw --markdown gfm > session.md
+
+# Export for Obsidian (foldable callouts instead of <details>)
+cc2md session.jsonl --markdown obsidian --output ~/vault/Inbox/session.md
 
 # Pipe raw markdown to another tool
 cc2md --raw | pandoc -o session.pdf

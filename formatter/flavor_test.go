@@ -10,11 +10,13 @@ func TestParseFlavor(t *testing.T) {
 	}{
 		{"gfm", FlavorGFM, false},
 		{"commonmark", FlavorCommonMark, false},
+		{"obsidian", FlavorObsidian, false},
 		{"", "", true},
 		{"foo", "", true},
 		{"GFM", "", true},
 		{"COMMONMARK", "", true},
 		{"Gfm", "", true},
+		{"Obsidian", "", true},
 	}
 
 	for _, tt := range tests {

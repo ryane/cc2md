@@ -21,14 +21,33 @@ func FormatToolCalls(calls []parser.LinkedToolCall, opts ToolFormatOptions) stri
 	}
 	body := strings.Join(parts, "\n\n")
 
-	if opts.Collapse && opts.Flavor != FlavorCommonMark {
-		label := fmt.Sprintf("Tool calls (%d)", len(calls))
-		if len(calls) == 1 {
-			label = "Tool call (1)"
-		}
-		return fmt.Sprintf("<details>\n<summary>%s</summary>\n\n%s\n\n</details>", label, body)
+	if !opts.Collapse || opts.Flavor == FlavorCommonMark {
+		return body
 	}
-	return body
+
+	label := fmt.Sprintf("Tool calls (%d)", len(calls))
+	if len(calls) == 1 {
+		label = "Tool call (1)"
+	}
+
+	if opts.Flavor == FlavorObsidian {
+		return fmt.Sprintf("> [!example]- %s\n%s", label, prefixLinesObsidian(body))
+	}
+	return fmt.Sprintf("<details>\n<summary>%s</summary>\n\n%s\n\n</details>", label, body)
+}
+
+// prefixLinesObsidian prefixes every line with "> " (or ">" for blank lines)
+// so the content lives inside an Obsidian callout block.
+func prefixLinesObsidian(s string) string {
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		if line == "" {
+			lines[i] = ">"
+		} else {
+			lines[i] = "> " + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 var summaryKeys = map[string]string{

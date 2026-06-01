@@ -77,3 +77,22 @@ func TestFormatThinking_CommonMark_NotCollapsed(t *testing.T) {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
 }
+
+func TestFormatThinking_Obsidian_Collapsed(t *testing.T) {
+	got := FormatThinking([]string{"I think..."}, true, FlavorObsidian)
+	if strings.Contains(got, "<details>") {
+		t.Errorf("Obsidian should not produce <details>, got: %s", got)
+	}
+	want := "> [!note]- Thinking\n> I think..."
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestFormatThinking_Obsidian_NotCollapsed(t *testing.T) {
+	got := FormatThinking([]string{"thought"}, false, FlavorObsidian)
+	want := "**Thinking:**\n\nthought"
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}

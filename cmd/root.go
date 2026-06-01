@@ -72,7 +72,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&collapseFlag, "collapse", "c", true, "Collapse tool calls and thinking into <details> tags")
 	rootCmd.Flags().IntVar(&maxLinesFlag, "max-lines", 100, "Max lines per tool output before truncation")
 	rootCmd.Flags().BoolVar(&rawFlag, "raw", false, "Output raw markdown (skip glamour rendering)")
-	rootCmd.Flags().StringVarP(&markdownFlag, "markdown", "m", "", "Markdown flavor: gfm, commonmark")
+	rootCmd.Flags().StringVarP(&markdownFlag, "markdown", "m", "", "Markdown flavor: gfm, commonmark, obsidian")
 	rootCmd.Flags().BoolVar(&noPagerFlag, "no-pager", false, "Disable pager even on TTY")
 }
 
