@@ -261,6 +261,52 @@ func TestFormatToolCalls(t *testing.T) {
 		}
 	})
 
+	t.Run("uses a longer fence when output contains triple backticks", func(t *testing.T) {
+		// Read output of a markdown file that itself contains ``` fences.
+		content := "# Doc\n\n```markdown\n## Heading\n```\n\nmore text"
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Read", map[string]interface{}{"file_path": "doc.md"}, strPtr(content))},
+			ToolFormatOptions{Collapse: false, MaxLines: 50},
+		)
+		// The wrapping fence must be at least 4 backticks so the inner ```
+		// does not close it prematurely.
+		if !strings.Contains(result, "````") {
+			t.Errorf("expected a 4+ backtick wrapping fence, got:\n%s", result)
+		}
+		// The inner content (including its ``` lines) must survive intact.
+		if !strings.Contains(result, "```markdown") {
+			t.Errorf("expected inner ```markdown preserved, got:\n%s", result)
+		}
+		if !strings.Contains(result, "more text") {
+			t.Errorf("expected trailing content inside fence, got:\n%s", result)
+		}
+	})
+
+	t.Run("fence grows past the longest backtick run in output", func(t *testing.T) {
+		// Output contains a 4-backtick run; wrapper must be 5+.
+		content := "before\n````\nnested\n````\nafter"
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Read", map[string]interface{}{"file_path": "x"}, strPtr(content))},
+			ToolFormatOptions{Collapse: false, MaxLines: 50},
+		)
+		if !strings.Contains(result, "`````") {
+			t.Errorf("expected a 5+ backtick wrapping fence, got:\n%s", result)
+		}
+	})
+
+	t.Run("uses plain triple fence when output has no backticks", func(t *testing.T) {
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("a\nb"))},
+			ToolFormatOptions{Collapse: false, MaxLines: 50},
+		)
+		if strings.Contains(result, "````") {
+			t.Errorf("expected plain triple fence for backtick-free output, got:\n%s", result)
+		}
+		if !strings.Contains(result, "```") {
+			t.Errorf("expected a triple fence, got:\n%s", result)
+		}
+	})
+
 	t.Run("formats multiple tool calls separated by double newline", func(t *testing.T) {
 		result := FormatToolCalls(
 			[]parser.LinkedToolCall{

@@ -81,7 +81,32 @@ func formatSingleTool(call parser.LinkedToolCall, opts ToolFormatOptions) string
 		result = internal.TruncateLines(result, opts.MaxLines).Text
 	}
 
-	return fmt.Sprintf("%s\n\n  ```\n%s\n  ```", header, indentBlock(result, 2))
+	// Use a fence longer than any backtick run in the output so embedded
+	// ``` (e.g. a Read of a markdown file) cannot close the wrapper early.
+	fence := fenceFor(result)
+	return fmt.Sprintf("%s\n\n  %s\n%s\n  %s", header, fence, indentBlock(result, 2), fence)
+}
+
+// fenceFor returns a backtick fence at least three long, and always longer
+// than the longest run of backticks appearing in s, so s can be embedded
+// verbatim without prematurely closing the fence.
+func fenceFor(s string) string {
+	longest, run := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			run++
+			if run > longest {
+				longest = run
+			}
+		} else {
+			run = 0
+		}
+	}
+	n := longest + 1
+	if n < 3 {
+		n = 3
+	}
+	return strings.Repeat("`", n)
 }
 
 func inlineSummary(call parser.LinkedToolCall) string {
