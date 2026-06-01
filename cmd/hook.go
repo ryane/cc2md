@@ -3,9 +3,16 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/magarcia/ccsession-viewer/discovery"
+	"github.com/magarcia/ccsession-viewer/formatter"
+	"github.com/magarcia/ccsession-viewer/hook"
+	"github.com/magarcia/ccsession-viewer/parser"
 )
 
 type hookFlags struct {
@@ -105,5 +112,100 @@ func init() {
 	rootCmd.AddCommand(hookCmd)
 }
 
-// runHook is implemented in Task 8.
-func runHook(cmd *cobra.Command, args []string) error { return nil }
+func runHook(cmd *cobra.Command, args []string) error {
+	cfg := resolveHookConfig(
+		hookFlagValues,
+		cmd.Flags().Changed("dir"),
+		cmd.Flags().Changed("flavor"),
+		cmd.Flags().Changed("thinking"),
+		cmd.Flags().Changed("collapse"),
+		cmd.Flags().Changed("max-lines"),
+	)
+	flavor, err := formatter.ParseFlavor(cfg.Flavor)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cc2md hook: %v, using obsidian\n", err)
+		flavor = formatter.FlavorObsidian
+	}
+
+	in, parseErr := hook.ParseInput(cmd.InOrStdin())
+	transcript := hookFlagValues.Transcript
+	sessionID := hookFlagValues.SessionID
+	if transcript == "" {
+		if parseErr != nil {
+			fmt.Fprintf(os.Stderr, "cc2md hook: parse stdin: %v\n", parseErr)
+			return nil // exit 0
+		}
+		transcript = in.TranscriptPath
+	}
+	if sessionID == "" {
+		sessionID = in.SessionID
+	}
+	if transcript == "" {
+		fmt.Fprintln(os.Stderr, "cc2md hook: missing transcript_path")
+		return nil
+	}
+
+	// Date from transcript modtime, else now.
+	date := time.Now()
+	if st, statErr := os.Stat(transcript); statErr == nil {
+		date = st.ModTime()
+	} else {
+		fmt.Fprintf(os.Stderr, "cc2md hook: stat transcript: %v (falling back to now)\n", statErr)
+	}
+
+	lines, err := parser.ReadSessionFile(transcript)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "cc2md hook: read transcript: %v\n", err)
+		return nil
+	}
+	meta := parser.ExtractMetadata(lines)
+	turns := parser.BuildTurns(lines)
+	md := formatter.FormatSession(meta, turns, formatter.FormatOptions{
+		IncludeThinking: cfg.Thinking,
+		Collapse:        cfg.Collapse,
+		MaxLines:        cfg.MaxLines,
+		Flavor:          flavor,
+	})
+
+	titleSlug := hook.SlugifyTitle(discovery.ExtractFirstUserMessage(transcript, 60))
+	target := hook.OutputPath(cfg.Dir, transcript, sessionID, titleSlug, date)
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "cc2md hook: mkdir %s: %v\n", filepath.Dir(target), err)
+		return nil
+	}
+	if err := atomicWrite(target, []byte(md)); err != nil {
+		fmt.Fprintf(os.Stderr, "cc2md hook: write %s: %v\n", target, err)
+		return nil
+	}
+	fmt.Fprintf(os.Stderr, "cc2md hook: wrote %s\n", target)
+	return nil
+}
+
+func atomicWrite(target string, data []byte) error {
+	dir := filepath.Dir(target)
+	tmp, err := os.CreateTemp(dir, ".cc2md-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	cleanup := func() { _ = os.Remove(tmpName) }
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		cleanup()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		cleanup()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		cleanup()
+		return err
+	}
+	if err := os.Rename(tmpName, target); err != nil {
+		cleanup()
+		return err
+	}
+	return nil
+}
