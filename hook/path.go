@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -83,6 +84,36 @@ func BuildFilename(date time.Time, titleSlug, idShort string) string {
 		return d + "-" + idShort + ".md"
 	}
 	return d + "-" + titleSlug + "-" + idShort + ".md"
+}
+
+// ResolveDir expands a leading "~/" or bare "~" against the user's home directory.
+// Any other path is returned verbatim. If the home dir cannot be determined,
+// the input is returned unchanged.
+//
+// Note: POSIX "~username" syntax is not supported and is returned unchanged.
+func ResolveDir(dir string) string {
+	if dir == "~" {
+		if h, err := os.UserHomeDir(); err == nil {
+			return h
+		}
+		return dir
+	}
+	if strings.HasPrefix(dir, "~/") {
+		if h, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(h, dir[2:])
+		}
+	}
+	return dir
+}
+
+// OutputPath assembles the full archive path for a session export.
+// hookDir may use ~ for the home directory.
+func OutputPath(hookDir, transcriptPath, sessionID, titleSlug string, date time.Time) string {
+	return filepath.Join(
+		ResolveDir(hookDir),
+		ProjectSlug(transcriptPath),
+		BuildFilename(date, titleSlug, IDShort(sessionID)),
+	)
 }
 
 // ProjectSlug derives a per-project folder name from a transcript path.

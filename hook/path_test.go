@@ -1,6 +1,8 @@
 package hook
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -100,5 +102,47 @@ func TestBuildFilename(t *testing.T) {
 	want = "2026-06-01-0b9c1f3a.md"
 	if got != want {
 		t.Errorf("no title: got %q, want %q", got, want)
+	}
+}
+
+func TestResolveDir(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skipf("no home dir: %v", err)
+	}
+
+	tests := []struct {
+		in, want string
+	}{
+		{"/tmp/archive", "/tmp/archive"},
+		{"~/claude-code-logs", filepath.Join(home, "claude-code-logs")},
+		{"~/sub/dir", filepath.Join(home, "sub/dir")},
+		{"~", home},
+		{"./relative", "./relative"}, // no expansion
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			if got := ResolveDir(tt.in); got != tt.want {
+				t.Errorf("ResolveDir(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestOutputPath(t *testing.T) {
+	date := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	// transcriptPath drives ProjectSlug; sessionID drives IDShort; title is
+	// passed in (caller has already extracted + slugified).
+	got := OutputPath(
+		"/tmp/archive",
+		"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
+		"0b9c1f3a-7e4d-4f2a-b8c1-3d4e5f6a7b8c",
+		"my-session",
+		date,
+	)
+	want := "/tmp/archive/cc2md/2026-06-01-my-session-0b9c1f3a.md"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
