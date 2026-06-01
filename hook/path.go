@@ -3,6 +3,7 @@ package hook
 import (
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/magarcia/ccsession-viewer/discovery"
 )
@@ -56,6 +57,32 @@ func SlugifyTitle(s string) string {
 		clipped = clipped[:idx]
 	}
 	return strings.Trim(clipped, "-")
+}
+
+const idShortLen = 8
+
+// IDShort returns the first idShortLen characters of sessionID, or the full
+// string if it is shorter than that. Returns "unknown" if sessionID is empty.
+func IDShort(sessionID string) string {
+	if sessionID == "" {
+		return "unknown"
+	}
+	if len(sessionID) < idShortLen {
+		return sessionID
+	}
+	return sessionID[:idShortLen]
+}
+
+// BuildFilename assembles a session export filename from the session's date,
+// a slugified title, and the short session id. If titleSlug is empty, the
+// title segment is omitted: <YYYY-MM-DD>-<idShort>.md. Otherwise the
+// filename is <YYYY-MM-DD>-<titleSlug>-<idShort>.md.
+func BuildFilename(date time.Time, titleSlug, idShort string) string {
+	d := date.Format("2006-01-02")
+	if titleSlug == "" {
+		return d + "-" + idShort + ".md"
+	}
+	return d + "-" + titleSlug + "-" + idShort + ".md"
 }
 
 // ProjectSlug derives a per-project folder name from a transcript path.

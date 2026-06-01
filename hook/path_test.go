@@ -2,6 +2,7 @@ package hook
 
 import (
 	"testing"
+	"time"
 )
 
 func TestSlugifyTitle(t *testing.T) {
@@ -65,5 +66,39 @@ func TestProjectSlug(t *testing.T) {
 				t.Errorf("ProjectSlug(%q) = %q, want %q", tt.transcriptPath, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestIDShort(t *testing.T) {
+	tests := []struct {
+		in, want string
+	}{
+		{"", "unknown"},
+		{"a", "a"},
+		{"abcdef12", "abcdef12"},
+		{"0b9c1f3a-7e4d-4f2a-b8c1-3d4e5f6a7b8c", "0b9c1f3a"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.in, func(t *testing.T) {
+			if got := IDShort(tt.in); got != tt.want {
+				t.Errorf("IDShort(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestBuildFilename(t *testing.T) {
+	date := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
+
+	got := BuildFilename(date, "exporting-session-via-hook", "0b9c1f3a")
+	want := "2026-06-01-exporting-session-via-hook-0b9c1f3a.md"
+	if got != want {
+		t.Errorf("with title: got %q, want %q", got, want)
+	}
+
+	got = BuildFilename(date, "", "0b9c1f3a")
+	want = "2026-06-01-0b9c1f3a.md"
+	if got != want {
+		t.Errorf("no title: got %q, want %q", got, want)
 	}
 }
