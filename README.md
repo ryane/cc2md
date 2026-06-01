@@ -158,6 +158,47 @@ git push
 
 Run this on a schedule (cron, launchd) to keep the archive growing automatically. Over time you get a complete record of how you work with AI — which patterns you return to, how your prompting evolves, and which approaches work across projects.
 
+## Auto-export with a Claude Code hook
+
+`cc2md hook` reads a Claude Code Stop-hook payload from stdin and writes the current session as markdown. Add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "cc2md hook" }] }
+    ]
+  }
+}
+```
+
+Files land at `~/claude-code-logs/<project>/<date>-<title>-<id8>.md` by default. The project folder is derived from the transcript path under `~/.claude/projects/`; deeply nested project paths (e.g. `~/Projects/some-app`) are truncated to the last path segment (`app`) — this is intentional and matches how `cc2md list` decodes project names.
+
+**Configuration** (flag or env var; flag wins):
+
+| Flag | Env var | Default |
+|---|---|---|
+| `--dir` | `CC2MD_HOOK_DIR` | `~/claude-code-logs` |
+| `--flavor` | `CC2MD_HOOK_FLAVOR` | `obsidian` |
+| `--thinking` | `CC2MD_HOOK_THINKING` | `true` |
+| `--collapse` | `CC2MD_HOOK_COLLAPSE` | `true` |
+| `--max-lines` | `CC2MD_HOOK_MAX_LINES` | `100` |
+
+The hook always exits 0; errors and a one-line `cc2md hook: wrote <path>` confirmation go to stderr.
+
+**Manual alternative** (no subcommand, just jq):
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      { "hooks": [{ "type": "command",
+        "command": "jq -r .transcript_path | xargs -I{} cc2md {} --markdown obsidian --thinking -o ~/claude-code-logs/$(date +%F).md" }] }
+    ]
+  }
+}
+```
+
 ## Building from Source
 
 Requires Go 1.25+ and [just](https://github.com/casey/just).
