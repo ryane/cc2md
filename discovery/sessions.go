@@ -65,7 +65,7 @@ func listSessionsIn(projectsDir, sessionNamesDir, projectFilter string) []Sessio
 		name := d.Name()
 
 		if filterLower != "" {
-			decoded := decodeProjectName(name)
+			decoded := DecodeProjectName(name)
 			if !strings.Contains(strings.ToLower(decoded), filterLower) &&
 				!strings.Contains(strings.ToLower(name), filterLower) {
 				continue
@@ -91,7 +91,7 @@ func listSessionsIn(projectsDir, sessionNamesDir, projectFilter string) []Sessio
 
 			sessionName := readSessionName(sessionNamesDir, sessionID)
 			if sessionName == "" {
-				sessionName = extractFirstUserMessage(filePath, 60)
+				sessionName = ExtractFirstUserMessage(filePath, 60)
 			}
 			if sessionName == "" {
 				sessionName = "(no title)"
@@ -100,7 +100,7 @@ func listSessionsIn(projectsDir, sessionNamesDir, projectFilter string) []Sessio
 			entries = append(entries, SessionEntry{
 				Path:       filePath,
 				SessionID:  sessionID,
-				Project:    decodeProjectName(name),
+				Project:    DecodeProjectName(name),
 				ModifiedAt: info.ModTime(),
 				Size:       info.Size(),
 				Name:       sessionName,
@@ -127,9 +127,9 @@ func readSessionName(sessionNamesDir, sessionID string) string {
 	return strings.TrimSpace(string(data))
 }
 
-// extractFirstUserMessage reads the first user message from a JSONL file
+// ExtractFirstUserMessage reads the first user message from a JSONL file
 // and returns a cleaned, truncated version suitable as a session name.
-func extractFirstUserMessage(filePath string, maxLen int) string {
+func ExtractFirstUserMessage(filePath string, maxLen int) string {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return ""
@@ -239,7 +239,11 @@ func FormatSessionList(sessions []SessionEntry) string {
 	return b.String()
 }
 
-func decodeProjectName(encoded string) string {
+// DecodeProjectName converts a Claude project directory name (e.g.
+// "-Users-ryan-Projects-cc2md") to a human-readable path (e.g.
+// "/Users/ryan/Projects/cc2md"). Names that do not start with "-" are
+// returned unchanged.
+func DecodeProjectName(encoded string) string {
 	if strings.HasPrefix(encoded, "-") {
 		return strings.ReplaceAll(encoded, "-", "/")
 	}

@@ -20,9 +20,9 @@ func TestDecodeProjectName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := decodeProjectName(tt.input)
+			got := DecodeProjectName(tt.input)
 			if got != tt.want {
-				t.Errorf("decodeProjectName(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("DecodeProjectName(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}
@@ -199,7 +199,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 		tmp := t.TempDir()
 		f := filepath.Join(tmp, "test.jsonl")
 		writeFile(t, f, `{"type":"user","message":{"role":"user","content":"hello world"}}`+"\n")
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "hello world" {
 			t.Errorf("got %q, want %q", got, "hello world")
 		}
@@ -212,7 +212,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 			`{"type":"user","message":{"role":"user","content":[{"type":"text","text":"array"}]}}`+"\n"+
 				`{"type":"user","message":{"role":"user","content":"fallback text"}}`+"\n",
 		)
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "fallback text" {
 			t.Errorf("got %q, want %q", got, "fallback text")
 		}
@@ -223,7 +223,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 		f := filepath.Join(tmp, "test.jsonl")
 		content := `<system-reminder>ignore this</system-reminder>actual question here`
 		writeFile(t, f, `{"type":"user","message":{"role":"user","content":"`+content+`"}}`+"\n")
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "actual question here" {
 			t.Errorf("got %q, want %q", got, "actual question here")
 		}
@@ -234,7 +234,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 		f := filepath.Join(tmp, "test.jsonl")
 		long := strings.Repeat("a", 100)
 		writeFile(t, f, `{"type":"user","message":{"role":"user","content":"`+long+`"}}`+"\n")
-		got := extractFirstUserMessage(f, 20)
+		got := ExtractFirstUserMessage(f, 20)
 		if got != strings.Repeat("a", 20)+"..." {
 			t.Errorf("got %q, want %q", got, strings.Repeat("a", 20)+"...")
 		}
@@ -247,7 +247,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 			`{"type":"assistant","message":{"role":"assistant","content":[]}}`+"\n"+
 				`{"type":"user","message":{"role":"user","content":"the question"}}`+"\n",
 		)
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "the question" {
 			t.Errorf("got %q, want %q", got, "the question")
 		}
@@ -257,7 +257,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 		tmp := t.TempDir()
 		f := filepath.Join(tmp, "test.jsonl")
 		writeFile(t, f, "")
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "" {
 			t.Errorf("got %q, want empty", got)
 		}
@@ -268,7 +268,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 		f := filepath.Join(tmp, "test.jsonl")
 		content := `<teammate-message teammate_id=\"lead\" summary=\"test\">ignore</teammate-message>real content`
 		writeFile(t, f, `{"type":"user","message":{"role":"user","content":"`+content+`"}}`+"\n")
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "real content" {
 			t.Errorf("got %q, want %q", got, "real content")
 		}
@@ -279,7 +279,7 @@ func TestExtractFirstUserMessage(t *testing.T) {
 		f := filepath.Join(tmp, "test.jsonl")
 		content := `<command-args>keep this</command-args>`
 		writeFile(t, f, `{"type":"user","message":{"role":"user","content":"`+content+`"}}`+"\n")
-		got := extractFirstUserMessage(f, 60)
+		got := ExtractFirstUserMessage(f, 60)
 		if got != "keep this" {
 			t.Errorf("got %q, want %q", got, "keep this")
 		}
