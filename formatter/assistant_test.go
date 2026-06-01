@@ -5,9 +5,11 @@ import (
 	"testing"
 )
 
-func TestFormatAssistantText_BlockquotePrefixed(t *testing.T) {
+func TestFormatAssistantText_PlainParagraphs(t *testing.T) {
+	// Claude prose is rendered as plain paragraphs, NOT blockquoted, so that
+	// fenced code in responses doesn't break inside a `>` block.
 	got := FormatAssistantText([]string{"first line\nsecond line"})
-	want := "> first line\n> second line"
+	want := "first line\nsecond line"
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
@@ -15,9 +17,18 @@ func TestFormatAssistantText_BlockquotePrefixed(t *testing.T) {
 
 func TestFormatAssistantText_MultipleBlocksSeparated(t *testing.T) {
 	got := FormatAssistantText([]string{"block one", "block two"})
-	want := "> block one\n>\n> block two"
+	want := "block one\n\nblock two"
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestFormatAssistantText_FencedCodeNotBlockquoted(t *testing.T) {
+	got := FormatAssistantText([]string{"see this:\n```bash\nls -la\n```\ndone"})
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(line, ">") {
+			t.Errorf("assistant prose must not be blockquoted, got line: %q", line)
+		}
 	}
 }
 

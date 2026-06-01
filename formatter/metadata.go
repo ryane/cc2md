@@ -19,7 +19,7 @@ func FormatMetadata(meta parser.SessionMetadata, flavor MarkdownFlavor) string {
 
 > **Tip:** Green blocks are **agent** (teammate) reports
 
-> Plain quoted lines are **Claude** responses`
+> Plain text under a **Claude** header is **Claude**'s response`
 	} else {
 		legend = `> [!NOTE]
 > Blue blocks are **user** messages
@@ -27,7 +27,7 @@ func FormatMetadata(meta parser.SessionMetadata, flavor MarkdownFlavor) string {
 > [!TIP]
 > Green blocks are **agent** (teammate) reports
 
-> Plain quoted lines are **Claude** responses`
+> Plain text under a **Claude** header is **Claude**'s response`
 	}
 
 	return fmt.Sprintf(`# Session

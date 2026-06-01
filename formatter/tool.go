@@ -30,9 +30,11 @@ func FormatToolCalls(calls []parser.LinkedToolCall, opts ToolFormatOptions) stri
 		label = "Tool call (1)"
 	}
 
-	if opts.Flavor == FlavorObsidian {
-		return fmt.Sprintf("> [!example]- %s\n%s", label, prefixLinesObsidian(body))
-	}
+	// Both GFM and Obsidian use a <details> foldable. Obsidian renders
+	// <details>/<summary> natively, and—crucially—this keeps the fenced tool
+	// output OUT of a `>` callout. Fenced code nested inside an Obsidian
+	// callout renders unreliably at scale (the callout visually breaks where
+	// the code begins), so we avoid that nesting entirely.
 	return fmt.Sprintf("<details>\n<summary>%s</summary>\n\n%s\n\n</details>", label, body)
 }
 

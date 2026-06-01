@@ -12,10 +12,12 @@ func FormatAssistantText(texts []string) string {
 	for i, t := range texts {
 		escaped[i] = EscapeAngleBrackets(EscapeSetextHrs(t))
 	}
-	// Render Claude prose as a plain blockquote so it sits under the
-	// "> **Claude**" header, matching the legend ("Plain quoted lines are
-	// Claude responses"). Blank ">" lines separate distinct text blocks.
-	return prefixLinesObsidian(strings.Join(escaped, "\n\n"))
+	// Render Claude prose as plain paragraphs (NOT a blockquote). Claude
+	// responses routinely contain fenced code blocks, and fenced code nested
+	// inside a `>` block renders unreliably in Obsidian (the quote visually
+	// breaks where the code begins). Plain prose under the "**Claude**"
+	// header reads cleanly and avoids that nesting.
+	return strings.Join(escaped, "\n\n")
 }
 
 // EscapeSetextHrs replaces bare --- lines with <hr> to prevent setext H2 headings.
