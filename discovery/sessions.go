@@ -35,11 +35,18 @@ var (
 	reStripTagOnly = regexp.MustCompile(`</?command-args[^>]*>`)
 )
 
-// ListSessions scans ~/.claude/projects/ for .jsonl session files.
+// ListSessions scans the Claude projects directory for .jsonl session files.
+// The directory is $CLAUDE_CONFIG_DIR/projects/ if set, else ~/.claude/projects/.
 // If projectFilter is non-empty, only projects whose decoded or raw name
 // contains the filter (case-insensitive) are included.
 func ListSessions(projectFilter string) []SessionEntry {
 	return listSessionsIn(defaultProjectsDir(), defaultSessionNamesDir(), projectFilter)
+}
+
+// ProjectsDir returns the path that ListSessions scans for session files.
+// Honors $CLAUDE_CONFIG_DIR; falls back to ~/.claude/projects.
+func ProjectsDir() string {
+	return defaultProjectsDir()
 }
 
 func listSessionsIn(projectsDir, sessionNamesDir, projectFilter string) []SessionEntry {
@@ -239,18 +246,32 @@ func decodeProjectName(encoded string) string {
 	return encoded
 }
 
-func defaultProjectsDir() string {
+// claudeConfigDir returns the Claude config directory, honoring the
+// CLAUDE_CONFIG_DIR environment variable when set and falling back to
+// ~/.claude otherwise. Returns "" if no directory can be determined.
+func claudeConfigDir() string {
+	if dir := strings.TrimSpace(os.Getenv("CLAUDE_CONFIG_DIR")); dir != "" {
+		return dir
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".claude", "projects")
+	return filepath.Join(home, ".claude")
+}
+
+func defaultProjectsDir() string {
+	base := claudeConfigDir()
+	if base == "" {
+		return ""
+	}
+	return filepath.Join(base, "projects")
 }
 
 func defaultSessionNamesDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	base := claudeConfigDir()
+	if base == "" {
 		return ""
 	}
-	return filepath.Join(home, ".claude", "session-names")
+	return filepath.Join(base, "session-names")
 }

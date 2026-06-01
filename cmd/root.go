@@ -105,7 +105,7 @@ func resolveSessionPath(cmd *cobra.Command, args []string) (string, error) {
 	if cmd.Flags().Changed("last") {
 		sessions := discovery.ListSessions("")
 		if len(sessions) == 0 {
-			return "", fmt.Errorf("no sessions found in ~/.claude/projects/")
+			return "", fmt.Errorf("no sessions found in %s", discovery.ProjectsDir())
 		}
 		if lastFlag > len(sessions) {
 			return "", fmt.Errorf("only %d session(s) found, requested #%d", len(sessions), lastFlag)
@@ -134,7 +134,7 @@ func resolveSessionPath(cmd *cobra.Command, args []string) (string, error) {
 	// TTY stdin, non-TTY stdout, no --last: use most recent
 	sessions := discovery.ListSessions("")
 	if len(sessions) == 0 {
-		return "", fmt.Errorf("no sessions found in ~/.claude/projects/")
+		return "", fmt.Errorf("no sessions found in %s", discovery.ProjectsDir())
 	}
 	return sessions[0].Path, nil
 }

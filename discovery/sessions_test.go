@@ -313,6 +313,82 @@ func TestStripXMLTags(t *testing.T) {
 	}
 }
 
+func TestClaudeConfigDir(t *testing.T) {
+	t.Run("uses CLAUDE_CONFIG_DIR when set", func(t *testing.T) {
+		custom := t.TempDir()
+		t.Setenv("CLAUDE_CONFIG_DIR", custom)
+
+		if got := claudeConfigDir(); got != custom {
+			t.Errorf("claudeConfigDir() = %q, want %q", got, custom)
+		}
+		wantProjects := filepath.Join(custom, "projects")
+		if got := defaultProjectsDir(); got != wantProjects {
+			t.Errorf("defaultProjectsDir() = %q, want %q", got, wantProjects)
+		}
+		wantNames := filepath.Join(custom, "session-names")
+		if got := defaultSessionNamesDir(); got != wantNames {
+			t.Errorf("defaultSessionNamesDir() = %q, want %q", got, wantNames)
+		}
+	})
+
+	t.Run("trims whitespace and treats blank as unset", func(t *testing.T) {
+		t.Setenv("CLAUDE_CONFIG_DIR", "   ")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			t.Skip("no home dir available")
+		}
+		want := filepath.Join(home, ".claude")
+		if got := claudeConfigDir(); got != want {
+			t.Errorf("claudeConfigDir() with blank env = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("falls back to ~/.claude when unset", func(t *testing.T) {
+		t.Setenv("CLAUDE_CONFIG_DIR", "")
+		home, err := os.UserHomeDir()
+		if err != nil {
+			t.Skip("no home dir available")
+		}
+		want := filepath.Join(home, ".claude")
+		if got := claudeConfigDir(); got != want {
+			t.Errorf("claudeConfigDir() unset = %q, want %q", got, want)
+		}
+		if got := defaultProjectsDir(); got != filepath.Join(home, ".claude", "projects") {
+			t.Errorf("defaultProjectsDir() unset = %q", got)
+		}
+		if got := defaultSessionNamesDir(); got != filepath.Join(home, ".claude", "session-names") {
+			t.Errorf("defaultSessionNamesDir() unset = %q", got)
+		}
+	})
+}
+
+func TestListSessions_HonorsClaudeConfigDir(t *testing.T) {
+	custom := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", custom)
+
+	proj := filepath.Join(custom, "projects", "-Users-name-projectX")
+	if err := os.MkdirAll(proj, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(proj, "session-x.jsonl"),
+		`{"type":"user","message":{"role":"user","content":"from custom config dir"}}`+"\n")
+
+	if got := ProjectsDir(); got != filepath.Join(custom, "projects") {
+		t.Errorf("ProjectsDir() = %q, want %q", got, filepath.Join(custom, "projects"))
+	}
+
+	entries := ListSessions("")
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry from CLAUDE_CONFIG_DIR, got %d", len(entries))
+	}
+	if entries[0].Name != "from custom config dir" {
+		t.Errorf("Name = %q, want %q", entries[0].Name, "from custom config dir")
+	}
+	if entries[0].Project != "/Users/name/projectX" {
+		t.Errorf("Project = %q, want %q", entries[0].Project, "/Users/name/projectX")
+	}
+}
+
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
