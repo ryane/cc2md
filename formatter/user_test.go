@@ -1,6 +1,9 @@
 package formatter
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestFormatUserTurn_PlainText(t *testing.T) {
 	got := FormatUserTurn([]string{"Hello"}, "", FlavorGFM)
@@ -23,6 +26,23 @@ func TestFormatUserTurn_Multiline(t *testing.T) {
 	want := "> [!NOTE]\n> **User**\n>\n> line1\n> line2"
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestFormatUserTurn_EscapesBareAngleTags(t *testing.T) {
+	got := FormatUserTurn([]string{`are you sure it's not the @<task> tag?`}, "", FlavorGFM)
+	if strings.Contains(got, "<task>") {
+		t.Errorf("expected bare <task> escaped in user text, got: %s", got)
+	}
+	if !strings.Contains(got, "&lt;task&gt;") {
+		t.Errorf("expected &lt;task&gt; in user text, got: %s", got)
+	}
+}
+
+func TestFormatUserTurn_PreservesAngleBracketsInCode(t *testing.T) {
+	got := FormatUserTurn([]string{"use `<path>` here"}, "", FlavorGFM)
+	if !strings.Contains(got, "`<path>`") {
+		t.Errorf("expected `<path>` preserved in user code span, got: %s", got)
 	}
 }
 

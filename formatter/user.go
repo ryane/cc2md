@@ -34,6 +34,7 @@ func FormatUserTurn(texts []string, timestamp string, flavor MarkdownFlavor) str
 		return ""
 	}
 
+	cleaned = EscapeAngleBrackets(cleaned)
 	body := prefixLines(cleaned, "> ")
 	tl := formatTimeLabel(timestamp)
 
@@ -46,6 +47,7 @@ func FormatUserTurn(texts []string, timestamp string, flavor MarkdownFlavor) str
 func FormatTeammateMessage(name, content, timestamp string, flavor MarkdownFlavor) string {
 	trimmed := strings.TrimSpace(content)
 	trimmed = reDashLine.ReplaceAllString(trimmed, "")
+	trimmed = EscapeAngleBrackets(trimmed)
 	body := prefixLines(trimmed, "> ")
 	tl := formatTimeLabel(timestamp)
 
