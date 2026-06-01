@@ -1,7 +1,10 @@
 package hook
 
 import (
+	"path/filepath"
 	"strings"
+
+	"github.com/magarcia/ccsession-viewer/discovery"
 )
 
 const maxTitleSlugLen = 50
@@ -53,4 +56,35 @@ func SlugifyTitle(s string) string {
 		clipped = clipped[:idx]
 	}
 	return strings.Trim(clipped, "-")
+}
+
+// ProjectSlug derives a per-project folder name from a transcript path.
+// It takes the parent directory's basename (e.g. "-Users-ryan-Projects-cc2md"),
+// decodes it via discovery.DecodeProjectName, and uses the basename of the
+// decoded path.
+//
+// Caveat: DecodeProjectName replaces every '-' in the encoded name with '/',
+// which is lossy for project directories that contain hyphens. For example,
+// "-Users-ryan-Projects-my-go-app" decodes to "/Users/ryan/Projects/my/go/app"
+// and yields "app", not "my-go-app". This matches how `cc2md list` displays
+// project names and is intentional.
+//
+// Falls back to a sanitized form of the encoded name (strip leading '-',
+// replace remaining '/' with '-') when the decoded basename is empty,
+// '.', or '/'. In practice this branch is unreachable for transcript paths
+// emitted by Claude Code; it exists as a defensive fallback in case future
+// changes to DecodeProjectName produce empty or sentinel basenames.
+func ProjectSlug(transcriptPath string) string {
+	encoded := filepath.Base(filepath.Dir(transcriptPath))
+	if encoded == "" || encoded == "." || encoded == "/" {
+		return "unknown"
+	}
+	decoded := discovery.DecodeProjectName(encoded)
+	slug := filepath.Base(decoded)
+	if slug == "" || slug == "." || slug == "/" {
+		// Defensive: unreachable for Claude-emitted paths after the encoded
+		// sentinel check above, but kept in case DecodeProjectName behavior changes.
+		return strings.TrimPrefix(strings.ReplaceAll(encoded, "/", "-"), "-")
+	}
+	return slug
 }

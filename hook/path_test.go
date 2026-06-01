@@ -30,3 +30,40 @@ func TestSlugifyTitle(t *testing.T) {
 		})
 	}
 }
+
+func TestProjectSlug(t *testing.T) {
+	tests := []struct {
+		name           string
+		transcriptPath string
+		want           string
+	}{
+		{
+			"encoded ~/.claude/projects path",
+			"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
+			"cc2md",
+		},
+		{
+			"deep encoded path",
+			"/Users/ryan/.claude/projects/-Users-ryan-Projects-some-app/abc.jsonl",
+			"app",
+		},
+		{
+			"non-encoded plain dir",
+			"/tmp/sandbox/abc.jsonl",
+			"sandbox",
+		},
+		{
+			"transcript at root (no parent dir name)",
+			"/abc.jsonl",
+			"unknown",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ProjectSlug(tt.transcriptPath)
+			if got != tt.want {
+				t.Errorf("ProjectSlug(%q) = %q, want %q", tt.transcriptPath, got, tt.want)
+			}
+		})
+	}
+}
