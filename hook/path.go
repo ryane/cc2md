@@ -107,32 +107,37 @@ func ResolveDir(dir string) string {
 }
 
 // OutputPath assembles the full archive path for a session export.
-// hookDir may use ~ for the home directory.
-func OutputPath(hookDir, transcriptPath, sessionID, titleSlug string, date time.Time) string {
+// hookDir may use ~ for the home directory. cwd is the session's real working
+// directory (from the hook payload or transcript); pass "" if unknown.
+func OutputPath(hookDir, cwd, transcriptPath, sessionID, titleSlug string, date time.Time) string {
 	return filepath.Join(
 		ResolveDir(hookDir),
-		ProjectSlug(transcriptPath),
+		ProjectSlug(cwd, transcriptPath),
 		BuildFilename(date, titleSlug, IDShort(sessionID)),
 	)
 }
 
-// ProjectSlug derives a per-project folder name from a transcript path.
-// It takes the parent directory's basename (e.g. "-Users-ryan-Projects-cc2md"),
-// decodes it via discovery.DecodeProjectName, and uses the basename of the
-// decoded path.
+// ProjectSlug derives a per-project folder name for a session.
 //
-// Caveat: DecodeProjectName replaces every '-' in the encoded name with '/',
-// which is lossy for project directories that contain hyphens. For example,
+// When cwd is a usable working directory, its basename is used directly. This
+// is the preferred source because it is unambiguous: it preserves both path
+// separators and literal hyphens (e.g. cwd "/Users/ryan/org-tools" yields
+// "org-tools").
+//
+// When cwd is empty or degenerate ("/", "."), it falls back to decoding the
+// transcript path's parent directory name (e.g. "-Users-ryan-Projects-cc2md")
+// via discovery.DecodeProjectName and taking the basename of the result.
+//
+// Caveat (fallback only): DecodeProjectName replaces every '-' in the encoded
+// name with '/', which is lossy for project directories that contain hyphens —
 // "-Users-ryan-Projects-my-go-app" decodes to "/Users/ryan/Projects/my/go/app"
-// and yields "app", not "my-go-app". This matches how `cc2md list` displays
-// project names and is intentional.
-//
-// Falls back to a sanitized form of the encoded name (strip leading '-',
-// replace remaining '/' with '-') when the decoded basename is empty,
-// '.', or '/'. In practice this branch is unreachable for transcript paths
-// emitted by Claude Code; it exists as a defensive fallback in case future
-// changes to DecodeProjectName produce empty or sentinel basenames.
-func ProjectSlug(transcriptPath string) string {
+// and yields "app", not "my-go-app". The cwd-based path above avoids this; the
+// fallback only runs when no real cwd is available.
+func ProjectSlug(cwd, transcriptPath string) string {
+	if slug := filepath.Base(filepath.Clean(cwd)); cwd != "" && slug != "." && slug != string(filepath.Separator) {
+		return slug
+	}
+
 	encoded := filepath.Base(filepath.Dir(transcriptPath))
 	if encoded == "" || encoded == "." || encoded == "/" {
 		return "unknown"

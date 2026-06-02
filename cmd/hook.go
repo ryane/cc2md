@@ -184,7 +184,16 @@ func runHook(cmd *cobra.Command, args []string) error {
 	})
 
 	titleSlug := hook.SlugifyTitle(discovery.ExtractFirstUserMessage(transcript, 60))
-	target := hook.OutputPath(cfg.Dir, transcript, sessionID, titleSlug, date)
+	// Prefer the real working directory for the project folder name: it is
+	// unambiguous (preserves hyphens), unlike the lossy encoded transcript
+	// path. Use the hook payload's cwd when present, else the cwd recorded in
+	// the transcript; ProjectSlug falls back to the transcript path if both
+	// are empty (e.g. when invoked via --transcript without stdin).
+	cwd := in.CWD
+	if cwd == "" {
+		cwd = meta.WorkingDirectory
+	}
+	target := hook.OutputPath(cfg.Dir, cwd, transcript, sessionID, titleSlug, date)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "cc2md hook: mkdir %s: %v\n", filepath.Dir(target), err)
 		return nil

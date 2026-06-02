@@ -37,35 +37,67 @@ func TestSlugifyTitle(t *testing.T) {
 func TestProjectSlug(t *testing.T) {
 	tests := []struct {
 		name           string
+		cwd            string
 		transcriptPath string
 		want           string
 	}{
 		{
-			"encoded ~/.claude/projects path",
+			"cwd preferred over encoded transcript path",
+			"/Users/ryan/Projects/cc2md",
 			"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
 			"cc2md",
 		},
 		{
-			"deep encoded path",
+			// The bug this fixes: a hyphenated project dir is lossy when
+			// decoded from the transcript path (every '-' becomes '/', so
+			// "org-tools" yields "tools"), but the real cwd preserves it.
+			"cwd preserves hyphenated project name",
+			"/Users/ryan/org-tools",
+			"/Users/ryan/.claude/projects/-Users-ryan-org-tools/abc.jsonl",
+			"org-tools",
+		},
+		{
+			"cwd with trailing slash",
+			"/Users/ryan/org-tools/",
+			"/Users/ryan/.claude/projects/-Users-ryan-org-tools/abc.jsonl",
+			"org-tools",
+		},
+		{
+			"empty cwd falls back to encoded transcript path",
+			"",
+			"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
+			"cc2md",
+		},
+		{
+			"empty cwd, deep encoded path stays lossy",
+			"",
 			"/Users/ryan/.claude/projects/-Users-ryan-Projects-some-app/abc.jsonl",
 			"app",
 		},
 		{
-			"non-encoded plain dir",
+			"empty cwd, non-encoded plain dir",
+			"",
 			"/tmp/sandbox/abc.jsonl",
 			"sandbox",
 		},
 		{
-			"transcript at root (no parent dir name)",
+			"empty cwd, transcript at root (no parent dir name)",
+			"",
 			"/abc.jsonl",
 			"unknown",
+		},
+		{
+			"degenerate cwd falls back to transcript path",
+			"/",
+			"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
+			"cc2md",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ProjectSlug(tt.transcriptPath)
+			got := ProjectSlug(tt.cwd, tt.transcriptPath)
 			if got != tt.want {
-				t.Errorf("ProjectSlug(%q) = %q, want %q", tt.transcriptPath, got, tt.want)
+				t.Errorf("ProjectSlug(%q, %q) = %q, want %q", tt.cwd, tt.transcriptPath, got, tt.want)
 			}
 		})
 	}
@@ -132,10 +164,11 @@ func TestResolveDir(t *testing.T) {
 func TestOutputPath(t *testing.T) {
 	date := time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)
 
-	// transcriptPath drives ProjectSlug; sessionID drives IDShort; title is
+	// cwd drives ProjectSlug; sessionID drives IDShort; title is
 	// passed in (caller has already extracted + slugified).
 	got := OutputPath(
 		"/tmp/archive",
+		"/Users/ryan/Projects/cc2md",
 		"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
 		"0b9c1f3a-7e4d-4f2a-b8c1-3d4e5f6a7b8c",
 		"my-session",
@@ -144,5 +177,19 @@ func TestOutputPath(t *testing.T) {
 	want := "/tmp/archive/cc2md/2026-06-01-my-session-0b9c1f3a.md"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+
+	// A hyphenated project resolves correctly via cwd.
+	got = OutputPath(
+		"/tmp/archive",
+		"/Users/ryan/org-tools",
+		"/Users/ryan/.claude/projects/-Users-ryan-org-tools/abc.jsonl",
+		"0b9c1f3a-7e4d-4f2a-b8c1-3d4e5f6a7b8c",
+		"my-session",
+		date,
+	)
+	want = "/tmp/archive/org-tools/2026-06-01-my-session-0b9c1f3a.md"
+	if got != want {
+		t.Errorf("hyphenated project: got %q, want %q", got, want)
 	}
 }

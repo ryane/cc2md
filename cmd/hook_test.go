@@ -110,11 +110,11 @@ func TestHookCmd_WritesObsidianFile(t *testing.T) {
 		t.Fatalf("hook returned error: %v", err)
 	}
 
-	// Project slug is derived from filepath.Base(filepath.Dir(fixture)).
-	// fixture is .../cmd/testdata/sample.jsonl, so the parent dir name is
-	// "testdata". DecodeProjectName leaves it unchanged, and filepath.Base
-	// of "testdata" is "testdata". So files land at <tmp>/testdata/...
-	projectDir := filepath.Join(tmp, "testdata")
+	// Project slug is derived from the session's working directory. The
+	// stdin payload omits "cwd", so ProjectSlug falls back to the cwd
+	// recorded in the transcript fixture, which is "/tmp". filepath.Base of
+	// "/tmp" is "tmp", so files land at <tmp>/tmp/...
+	projectDir := filepath.Join(tmp, "tmp")
 	matches, _ := filepath.Glob(filepath.Join(projectDir, "*.md"))
 	if len(matches) != 1 {
 		t.Fatalf("expected exactly 1 file under %s; got %v", projectDir, matches)
@@ -138,6 +138,35 @@ func TestHookCmd_WritesObsidianFile(t *testing.T) {
 	}
 }
 
+// TestHookCmd_PrefersStdinCWD verifies the project folder comes from the
+// hook payload's cwd when present, preserving hyphens that the encoded
+// transcript path would otherwise lose (e.g. "org-tools" not "tools").
+func TestHookCmd_PrefersStdinCWD(t *testing.T) {
+	wd, _ := os.Getwd()
+	fixture := filepath.Join(wd, "testdata", "sample.jsonl")
+	tmp := t.TempDir()
+
+	stdinPayload, _ := json.Marshal(map[string]string{
+		"session_id":      "0b9c1f3a-7e4d-4f2a-b8c1-3d4e5f6a7b8c",
+		"transcript_path": fixture,
+		"cwd":             "/Users/ryan/org-tools",
+		"hook_event_name": "Stop",
+	})
+
+	resetHookFlagsForTest(t)
+	rootCmd.SetIn(bytes.NewReader(stdinPayload))
+	rootCmd.SetArgs([]string{"hook", "--dir", tmp})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("hook returned error: %v", err)
+	}
+
+	projectDir := filepath.Join(tmp, "org-tools")
+	matches, _ := filepath.Glob(filepath.Join(projectDir, "*.md"))
+	if len(matches) != 1 {
+		t.Fatalf("expected exactly 1 file under %s; got %v", projectDir, matches)
+	}
+}
+
 func TestHookCmd_Idempotent(t *testing.T) {
 	wd, _ := os.Getwd()
 	fixture := filepath.Join(wd, "testdata", "sample.jsonl")
@@ -155,7 +184,7 @@ func TestHookCmd_Idempotent(t *testing.T) {
 			t.Fatalf("run %d: %v", i, err)
 		}
 	}
-	matches, _ := filepath.Glob(filepath.Join(tmp, "testdata", "*.md"))
+	matches, _ := filepath.Glob(filepath.Join(tmp, "tmp", "*.md"))
 	if len(matches) != 1 {
 		t.Fatalf("idempotency: expected 1 file, got %d: %v", len(matches), matches)
 	}
@@ -176,7 +205,7 @@ func TestHookCmd_GfmFlavor(t *testing.T) {
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("hook returned error: %v", err)
 	}
-	matches, _ := filepath.Glob(filepath.Join(tmp, "testdata", "*.md"))
+	matches, _ := filepath.Glob(filepath.Join(tmp, "tmp", "*.md"))
 	if len(matches) != 1 {
 		t.Fatalf("expected 1 file, got %v", matches)
 	}
