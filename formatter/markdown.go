@@ -13,6 +13,9 @@ type FormatOptions struct {
 	Collapse        bool
 	MaxLines        int
 	Flavor          MarkdownFlavor
+	// OmitToolOutput drops tool-call result blocks, keeping only the
+	// one-line headers. Zero value keeps output.
+	OmitToolOutput bool
 }
 
 func FormatSession(meta parser.SessionMetadata, turns []parser.ConversationTurn, opts FormatOptions) string {
@@ -48,9 +51,10 @@ func FormatSession(meta parser.SessionMetadata, turns []parser.ConversationTurn,
 			}
 			if len(turn.ToolCalls) > 0 {
 				parts = append(parts, FormatToolCalls(turn.ToolCalls, ToolFormatOptions{
-					Collapse: opts.Collapse,
-					MaxLines: opts.MaxLines,
-					Flavor:   opts.Flavor,
+					Collapse:   opts.Collapse,
+					MaxLines:   opts.MaxLines,
+					Flavor:     opts.Flavor,
+					OmitOutput: opts.OmitToolOutput,
 				}))
 			}
 			if len(parts) > 0 {

@@ -14,9 +14,10 @@ func TestResolveHookFlags_Defaults(t *testing.T) {
 	t.Setenv("CC2MD_HOOK_FLAVOR", "")
 	t.Setenv("CC2MD_HOOK_THINKING", "")
 	t.Setenv("CC2MD_HOOK_COLLAPSE", "")
+	t.Setenv("CC2MD_HOOK_TOOL_OUTPUT", "")
 	t.Setenv("CC2MD_HOOK_MAX_LINES", "")
 
-	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false)
+	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false, false)
 	if cfg.Dir != "~/claude-code-logs" {
 		t.Errorf("Dir default: got %q", cfg.Dir)
 	}
@@ -29,6 +30,9 @@ func TestResolveHookFlags_Defaults(t *testing.T) {
 	if cfg.Collapse != true {
 		t.Errorf("Collapse default: got %v", cfg.Collapse)
 	}
+	if cfg.ToolOutput != true {
+		t.Errorf("ToolOutput default: got %v", cfg.ToolOutput)
+	}
 	if cfg.MaxLines != 100 {
 		t.Errorf("MaxLines default: got %d", cfg.MaxLines)
 	}
@@ -39,7 +43,7 @@ func TestResolveHookFlags_EnvOverridesDefault(t *testing.T) {
 	t.Setenv("CC2MD_HOOK_THINKING", "false")
 	t.Setenv("CC2MD_HOOK_MAX_LINES", "42")
 
-	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false)
+	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false, false)
 	if cfg.Dir != "/tmp/from-env" {
 		t.Errorf("Dir from env: got %q", cfg.Dir)
 	}
@@ -56,7 +60,7 @@ func TestResolveHookFlags_FlagOverridesEnv(t *testing.T) {
 	t.Setenv("CC2MD_HOOK_THINKING", "false")
 
 	f := hookFlags{Dir: "/tmp/from-flag", Thinking: true}
-	cfg := resolveHookConfig(f, true /*dirSet*/, false, true /*thinkingSet*/, false, false)
+	cfg := resolveHookConfig(f, true /*dirSet*/, false, true /*thinkingSet*/, false, false, false)
 	if cfg.Dir != "/tmp/from-flag" {
 		t.Errorf("Dir from flag: got %q", cfg.Dir)
 	}
@@ -67,9 +71,24 @@ func TestResolveHookFlags_FlagOverridesEnv(t *testing.T) {
 
 func TestResolveHookFlags_BadEnvBoolFallsBack(t *testing.T) {
 	t.Setenv("CC2MD_HOOK_THINKING", "notabool")
-	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false)
+	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false, false)
 	if cfg.Thinking != true {
 		t.Errorf("expected default true on bad bool, got %v", cfg.Thinking)
+	}
+}
+
+func TestResolveHookFlags_ToolOutputEnvAndFlag(t *testing.T) {
+	t.Setenv("CC2MD_HOOK_TOOL_OUTPUT", "false")
+	cfg := resolveHookConfig(hookFlags{}, false, false, false, false, false, false)
+	if cfg.ToolOutput != false {
+		t.Errorf("ToolOutput from env: got %v, want false", cfg.ToolOutput)
+	}
+
+	// Flag overrides env.
+	f := hookFlags{ToolOutput: true}
+	cfg = resolveHookConfig(f, false, false, false, false, true /*toolOutputSet*/, false)
+	if cfg.ToolOutput != true {
+		t.Errorf("ToolOutput from flag: got %v, want true", cfg.ToolOutput)
 	}
 }
 
@@ -179,6 +198,7 @@ func resetHookFlagsForTest(t *testing.T) {
 	hookCmd.Flags().StringVar(&hookFlagValues.Flavor, "flavor", "", "")
 	hookCmd.Flags().BoolVar(&hookFlagValues.Thinking, "thinking", true, "")
 	hookCmd.Flags().BoolVar(&hookFlagValues.Collapse, "collapse", true, "")
+	hookCmd.Flags().BoolVar(&hookFlagValues.ToolOutput, "tool-output", true, "")
 	hookCmd.Flags().IntVar(&hookFlagValues.MaxLines, "max-lines", 100, "")
 	hookCmd.Flags().StringVar(&hookFlagValues.Transcript, "transcript", "", "")
 	hookCmd.Flags().StringVar(&hookFlagValues.SessionID, "session-id", "", "")

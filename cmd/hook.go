@@ -20,29 +20,32 @@ type hookFlags struct {
 	Flavor     string
 	Thinking   bool
 	Collapse   bool
+	ToolOutput bool
 	MaxLines   int
 	Transcript string
 	SessionID  string
 }
 
 type hookConfig struct {
-	Dir      string
-	Flavor   string
-	Thinking bool
-	Collapse bool
-	MaxLines int
+	Dir        string
+	Flavor     string
+	Thinking   bool
+	Collapse   bool
+	ToolOutput bool
+	MaxLines   int
 }
 
 // resolveHookConfig applies precedence: flag (when *Set) > env > default.
 // The five booleans report whether the user passed each flag on the command line
 // (cmd.Flags().Changed(name)).
-func resolveHookConfig(f hookFlags, dirSet, flavorSet, thinkingSet, collapseSet, maxLinesSet bool) hookConfig {
+func resolveHookConfig(f hookFlags, dirSet, flavorSet, thinkingSet, collapseSet, toolOutputSet, maxLinesSet bool) hookConfig {
 	cfg := hookConfig{
-		Dir:      "~/claude-code-logs",
-		Flavor:   "obsidian",
-		Thinking: true,
-		Collapse: true,
-		MaxLines: 100,
+		Dir:        "~/claude-code-logs",
+		Flavor:     "obsidian",
+		Thinking:   true,
+		Collapse:   true,
+		ToolOutput: true,
+		MaxLines:   100,
 	}
 
 	if v := os.Getenv("CC2MD_HOOK_DIR"); v != "" {
@@ -65,6 +68,13 @@ func resolveHookConfig(f hookFlags, dirSet, flavorSet, thinkingSet, collapseSet,
 			fmt.Fprintf(os.Stderr, "cc2md hook: invalid CC2MD_HOOK_COLLAPSE=%q, using default\n", v)
 		}
 	}
+	if v := os.Getenv("CC2MD_HOOK_TOOL_OUTPUT"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cfg.ToolOutput = b
+		} else {
+			fmt.Fprintf(os.Stderr, "cc2md hook: invalid CC2MD_HOOK_TOOL_OUTPUT=%q, using default\n", v)
+		}
+	}
 	if v := os.Getenv("CC2MD_HOOK_MAX_LINES"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.MaxLines = n
@@ -84,6 +94,9 @@ func resolveHookConfig(f hookFlags, dirSet, flavorSet, thinkingSet, collapseSet,
 	}
 	if collapseSet {
 		cfg.Collapse = f.Collapse
+	}
+	if toolOutputSet {
+		cfg.ToolOutput = f.ToolOutput
 	}
 	if maxLinesSet {
 		cfg.MaxLines = f.MaxLines
@@ -106,6 +119,7 @@ func init() {
 	hookCmd.Flags().StringVar(&hookFlagValues.Flavor, "flavor", "", "Markdown flavor: gfm, commonmark, obsidian (env: CC2MD_HOOK_FLAVOR)")
 	hookCmd.Flags().BoolVar(&hookFlagValues.Thinking, "thinking", true, "Include thinking blocks (env: CC2MD_HOOK_THINKING)")
 	hookCmd.Flags().BoolVar(&hookFlagValues.Collapse, "collapse", true, "Collapse tool calls (env: CC2MD_HOOK_COLLAPSE)")
+	hookCmd.Flags().BoolVar(&hookFlagValues.ToolOutput, "tool-output", true, "Include tool call output; --tool-output=false keeps only the headers (env: CC2MD_HOOK_TOOL_OUTPUT)")
 	hookCmd.Flags().IntVar(&hookFlagValues.MaxLines, "max-lines", 100, "Max lines per tool output (env: CC2MD_HOOK_MAX_LINES)")
 	hookCmd.Flags().StringVar(&hookFlagValues.Transcript, "transcript", "", "Override transcript_path from stdin")
 	hookCmd.Flags().StringVar(&hookFlagValues.SessionID, "session-id", "", "Override session_id from stdin")
@@ -119,6 +133,7 @@ func runHook(cmd *cobra.Command, args []string) error {
 		cmd.Flags().Changed("flavor"),
 		cmd.Flags().Changed("thinking"),
 		cmd.Flags().Changed("collapse"),
+		cmd.Flags().Changed("tool-output"),
 		cmd.Flags().Changed("max-lines"),
 	)
 	flavor, err := formatter.ParseFlavor(cfg.Flavor)
@@ -165,6 +180,7 @@ func runHook(cmd *cobra.Command, args []string) error {
 		Collapse:        cfg.Collapse,
 		MaxLines:        cfg.MaxLines,
 		Flavor:          flavor,
+		OmitToolOutput:  !cfg.ToolOutput,
 	})
 
 	titleSlug := hook.SlugifyTitle(discovery.ExtractFirstUserMessage(transcript, 60))

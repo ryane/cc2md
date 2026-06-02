@@ -12,6 +12,9 @@ type ToolFormatOptions struct {
 	Collapse bool
 	MaxLines int
 	Flavor   MarkdownFlavor
+	// OmitOutput drops each tool call's result block, keeping only the
+	// one-line header (e.g. "- **Read** `file`"). Zero value keeps output.
+	OmitOutput bool
 }
 
 func FormatToolCalls(calls []parser.LinkedToolCall, opts ToolFormatOptions) string {
@@ -59,7 +62,7 @@ func formatSingleTool(call parser.LinkedToolCall, opts ToolFormatOptions) string
 		header += fmt.Sprintf(" `%s`", summary)
 	}
 
-	if call.Result == nil || *call.Result == "" {
+	if opts.OmitOutput || call.Result == nil || *call.Result == "" {
 		return header
 	}
 

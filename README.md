@@ -95,7 +95,7 @@ By default, `cc2md` uses **CommonMark** for terminal rendering and **GFM** when 
 
 - `gfm` — GitHub Flavored Markdown: `> [!NOTE]` alerts, `<details>` tags
 - `commonmark` — Portable markdown: `> **Note:**` blockquotes, expanded sections
-- `obsidian` — Same as `gfm` but tool calls and thinking use foldable `> [!example]-` callouts instead of `<details>` (Obsidian renders markdown inside `<details>` poorly)
+- `obsidian` — Like `gfm`, but tool calls and thinking render as plain markdown (no `<details>`, no `>` callouts). Obsidian renders markdown inside `<details>` poorly and breaks fenced code nested in callouts, so the obsidian flavor avoids both — at the cost of foldability.
 
 ## Examples
 
@@ -182,7 +182,10 @@ Files land at `~/claude-code-logs/<project>/<date>-<title>-<id8>.md` by default.
 | `--flavor` | `CC2MD_HOOK_FLAVOR` | `obsidian` |
 | `--thinking` | `CC2MD_HOOK_THINKING` | `true` |
 | `--collapse` | `CC2MD_HOOK_COLLAPSE` | `true` |
+| `--tool-output` | `CC2MD_HOOK_TOOL_OUTPUT` | `true` |
 | `--max-lines` | `CC2MD_HOOK_MAX_LINES` | `100` |
+
+Set `--tool-output=false` to keep each tool call's one-line header (so you can still see what Claude did) while dropping the often-large output blocks — handy for a lean conversation-focused archive.
 
 The hook always exits 0; errors and a one-line `cc2md hook: wrote <path>` confirmation go to stderr.
 

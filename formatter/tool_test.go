@@ -261,6 +261,36 @@ func TestFormatToolCalls(t *testing.T) {
 		}
 	})
 
+	t.Run("omits output but keeps header when OmitOutput is true", func(t *testing.T) {
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Read", map[string]interface{}{"file_path": "big.txt"}, strPtr("lots\nof\noutput"))},
+			ToolFormatOptions{Collapse: false, MaxLines: 50, OmitOutput: true},
+		)
+		if result != "- **Read** `big.txt`" {
+			t.Errorf("expected header only, got: %q", result)
+		}
+		if strings.Contains(result, "```") {
+			t.Errorf("expected no code fence, got: %s", result)
+		}
+		if strings.Contains(result, "lots") {
+			t.Errorf("expected output dropped, got: %s", result)
+		}
+	})
+
+	t.Run("OmitOutput still lists every tool header", func(t *testing.T) {
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{
+				makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("a\nb")),
+				makeCall("Read", map[string]interface{}{"file_path": "x.ts"}, strPtr("content")),
+			},
+			ToolFormatOptions{Collapse: false, MaxLines: 50, OmitOutput: true},
+		)
+		want := "- **Bash** `ls`\n\n- **Read** `x.ts`"
+		if result != want {
+			t.Errorf("got: %q\nwant: %q", result, want)
+		}
+	})
+
 	t.Run("uses a longer fence when output contains triple backticks", func(t *testing.T) {
 		// Read output of a markdown file that itself contains ``` fences.
 		content := "# Doc\n\n```markdown\n## Heading\n```\n\nmore text"
