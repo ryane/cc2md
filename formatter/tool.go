@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/magarcia/ccsession-viewer/internal"
@@ -99,11 +100,20 @@ func fenceFor(s string) string {
 	return strings.Repeat("`", n)
 }
 
+var reWhitespace = regexp.MustCompile(`\s+`)
+
+// collapseWhitespace flattens runs of whitespace (including newlines) to a
+// single space so a multi-line value — e.g. a `git`/`jj` commit message body
+// or a heredoc — stays on one line inside the `inline code` header.
+func collapseWhitespace(s string) string {
+	return strings.TrimSpace(reWhitespace.ReplaceAllString(s, " "))
+}
+
 func inlineSummary(call parser.LinkedToolCall) string {
 	if key, ok := summaryKeys[call.Name]; ok {
 		if val, ok := call.Input[key]; ok {
 			if s, ok := val.(string); ok {
-				return internal.TruncateString(s, 80)
+				return internal.TruncateString(collapseWhitespace(s), 80)
 			}
 		}
 		return ""

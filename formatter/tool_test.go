@@ -35,6 +35,20 @@ func TestFormatToolCalls(t *testing.T) {
 		}
 	})
 
+	t.Run("collapses newlines in a multi-line command summary", func(t *testing.T) {
+		// A Bash command with a newline (e.g. a multi-line commit message) must
+		// not break the single-line `inline code` header across lines, which
+		// would orphan the truncation/backtick onto its own line.
+		cmd := "jj commit -m \"feat: add thing\n\nLong body line one.\""
+		result := FormatToolCalls(
+			[]parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": cmd}, nil)},
+			opts,
+		)
+		if strings.Contains(result, "\n") {
+			t.Errorf("expected single-line header, got multi-line:\n%q", result)
+		}
+	})
+
 	t.Run("formats a Read tool call with file_path inline summary", func(t *testing.T) {
 		result := FormatToolCalls(
 			[]parser.LinkedToolCall{makeCall("Read", map[string]interface{}{"file_path": "/src/index.ts"}, nil)},
