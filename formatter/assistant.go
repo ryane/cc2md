@@ -98,12 +98,11 @@ func FormatThinking(blocks []string, collapse bool, flavor MarkdownFlavor) strin
 	}
 	combined := strings.Join(escaped, "\n\n<hr>\n\n")
 
-	if flavor == FlavorCommonMark || !collapse {
+	// Obsidian, like commonmark, renders thinking as plain markdown: a `>`
+	// callout breaks any fenced code inside the reasoning, and <details>
+	// won't render markdown in obsidian. Only GFM gets the <details> foldable.
+	if flavor == FlavorCommonMark || flavor == FlavorObsidian || !collapse {
 		return "**Thinking:**\n\n" + combined
-	}
-
-	if flavor == FlavorObsidian {
-		return "> [!note]- Thinking\n" + prefixLinesObsidian(combined)
 	}
 
 	return strings.Join([]string{

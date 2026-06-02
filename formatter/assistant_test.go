@@ -139,11 +139,17 @@ func TestFormatThinking_CommonMark_NotCollapsed(t *testing.T) {
 }
 
 func TestFormatThinking_Obsidian_Collapsed(t *testing.T) {
+	// Obsidian renders thinking as plain markdown even when collapse is on:
+	// a `>` callout breaks fenced code inside reasoning, and <details> won't
+	// render markdown in obsidian.
 	got := FormatThinking([]string{"I think..."}, true, FlavorObsidian)
 	if strings.Contains(got, "<details>") {
 		t.Errorf("Obsidian should not produce <details>, got: %s", got)
 	}
-	want := "> [!note]- Thinking\n> I think..."
+	if strings.Contains(got, "[!note]") {
+		t.Errorf("Obsidian should not use a callout, got: %s", got)
+	}
+	want := "**Thinking:**\n\nI think..."
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}

@@ -347,47 +347,43 @@ func TestFormatToolCalls_CommonMark(t *testing.T) {
 }
 
 func TestFormatToolCalls_Obsidian(t *testing.T) {
-	t.Run("collapse wraps tool calls in a <details> foldable", func(t *testing.T) {
-		// Obsidian renders fenced code inside a `>` callout unreliably at scale,
-		// so the collapsed group uses a <details> element (which Obsidian also
-		// renders as a foldable) and keeps fenced code OUT of any blockquote.
+	t.Run("collapse is ignored — obsidian never wraps tool output", func(t *testing.T) {
+		// Obsidian can't render markdown inside <details> (shows raw), and fenced
+		// code inside a `>` callout breaks at scale. So obsidian ALWAYS renders
+		// tool output as plain markdown regardless of collapse.
 		result := FormatToolCalls(
 			[]parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("output"))},
 			ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorObsidian},
 		)
-		if !strings.Contains(result, "<details>") {
-			t.Errorf("expected <details>, got: %s", result)
-		}
-		if !strings.Contains(result, "<summary>Tool call (1)</summary>") {
-			t.Errorf("expected <summary> label, got: %s", result)
+		if strings.Contains(result, "<details>") {
+			t.Errorf("obsidian must not use <details>, got: %s", result)
 		}
 		if strings.Contains(result, "[!example]") {
-			t.Errorf("should not use a blockquote callout for collapse, got: %s", result)
+			t.Errorf("obsidian must not use a callout, got: %s", result)
 		}
 		if !strings.Contains(result, "**Bash** `ls`") {
 			t.Errorf("expected Bash entry, got: %s", result)
 		}
 	})
 
-	t.Run("collapsed fenced code is not blockquote-prefixed", func(t *testing.T) {
-		// The whole point: code fences must not sit inside a `>` callout.
+	t.Run("obsidian tool output is never blockquote-prefixed", func(t *testing.T) {
 		result := FormatToolCalls(
 			[]parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("a\nb"))},
 			ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorObsidian},
 		)
 		for _, line := range strings.Split(result, "\n") {
 			if strings.HasPrefix(line, ">") {
-				t.Errorf("no line should be blockquote-prefixed in obsidian collapse, got: %q", line)
+				t.Errorf("no line should be blockquote-prefixed for obsidian, got: %q", line)
 			}
 		}
 	})
 
-	t.Run("obsidian collapse matches GFM collapse", func(t *testing.T) {
+	t.Run("obsidian ignores collapse: same output collapsed or not", func(t *testing.T) {
 		calls := []parser.LinkedToolCall{makeCall("Bash", map[string]interface{}{"command": "ls"}, strPtr("out"))}
-		gfm := FormatToolCalls(calls, ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorGFM})
-		obs := FormatToolCalls(calls, ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorObsidian})
-		if gfm != obs {
-			t.Errorf("expected obsidian collapse to match GFM:\ngfm: %s\nobs: %s", gfm, obs)
+		on := FormatToolCalls(calls, ToolFormatOptions{Collapse: true, MaxLines: 50, Flavor: FlavorObsidian})
+		off := FormatToolCalls(calls, ToolFormatOptions{Collapse: false, MaxLines: 50, Flavor: FlavorObsidian})
+		if on != off {
+			t.Errorf("expected obsidian to ignore collapse:\non:  %s\noff: %s", on, off)
 		}
 	})
 
