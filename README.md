@@ -172,7 +172,7 @@ Run this on a schedule (cron, launchd) to keep the archive growing automatically
 }
 ```
 
-Files land at `~/claude-code-logs/<project>/<date>-<title>-<id8>.md` by default. The project folder is derived from the transcript path under `~/.claude/projects/`; deeply nested project paths (e.g. `~/Projects/some-app`) are truncated to the last path segment (`app`) — this is intentional and matches how `cc2md list` decodes project names.
+Files land at `~/claude-code-logs/<project>/<date>-<title>-<id8>.md` by default. The project folder is the basename of the session's working directory (e.g. `~/Projects/some-app` → `some-app`), falling back to decoding the transcript path under `~/.claude/projects/` when no working directory is available. Leading dots are trimmed (`~/.dotfiles` → `dotfiles/`) so archive folders are never hidden from tools like Obsidian.
 
 **Configuration** (flag or env var; flag wins):
 
