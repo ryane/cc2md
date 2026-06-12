@@ -133,9 +133,12 @@ func OutputPath(hookDir, cwd, transcriptPath, sessionID, titleSlug string, date 
 // "-Users-ryan-Projects-my-go-app" decodes to "/Users/ryan/Projects/my/go/app"
 // and yields "app", not "my-go-app". The cwd-based path above avoids this; the
 // fallback only runs when no real cwd is available.
+//
+// Leading dots are trimmed from the result (".dotfiles" → "dotfiles") so the
+// archive folder is never hidden in tools like Obsidian.
 func ProjectSlug(cwd, transcriptPath string) string {
 	if slug := filepath.Base(filepath.Clean(cwd)); cwd != "" && slug != "." && slug != string(filepath.Separator) {
-		return slug
+		return normalizeSlug(slug)
 	}
 
 	encoded := filepath.Base(filepath.Dir(transcriptPath))
@@ -147,7 +150,18 @@ func ProjectSlug(cwd, transcriptPath string) string {
 	if slug == "" || slug == "." || slug == "/" {
 		// Defensive: unreachable for Claude-emitted paths after the encoded
 		// sentinel check above, but kept in case DecodeProjectName behavior changes.
-		return strings.TrimPrefix(strings.ReplaceAll(encoded, "/", "-"), "-")
+		return normalizeSlug(strings.TrimPrefix(strings.ReplaceAll(encoded, "/", "-"), "-"))
+	}
+	return normalizeSlug(slug)
+}
+
+// normalizeSlug strips leading '.' characters so the archive folder is never
+// hidden (Obsidian does not show dot-directories). Returns "unknown" if the
+// name is empty after trimming (e.g. a directory named only of dots).
+func normalizeSlug(slug string) string {
+	slug = strings.TrimLeft(slug, ".")
+	if slug == "" {
+		return "unknown"
 	}
 	return slug
 }

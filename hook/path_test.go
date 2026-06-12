@@ -92,6 +92,36 @@ func TestProjectSlug(t *testing.T) {
 			"/Users/ryan/.claude/projects/-Users-ryan-Projects-cc2md/abc.jsonl",
 			"cc2md",
 		},
+		{
+			"leading dot trimmed from cwd basename",
+			"/Users/ryan/.dotfiles",
+			"/Users/ryan/.claude/projects/-Users-ryan--dotfiles/abc.jsonl",
+			"dotfiles",
+		},
+		{
+			"multiple leading dots trimmed",
+			"/Users/ryan/..config",
+			"",
+			"config",
+		},
+		{
+			"all-dots cwd basename yields unknown",
+			"/Users/ryan/...",
+			"",
+			"unknown",
+		},
+		{
+			"interior dot preserved",
+			"/Users/ryan/my.app",
+			"",
+			"my.app",
+		},
+		{
+			"fallback decoded slug with leading dot trimmed",
+			"",
+			"/tmp/.sandbox/abc.jsonl",
+			"sandbox",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

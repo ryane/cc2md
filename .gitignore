@@ -138,3 +138,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# jj workspaces
+.workspaces/
