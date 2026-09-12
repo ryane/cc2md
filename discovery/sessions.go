@@ -284,11 +284,24 @@ func FormatSessionList(sessions []SessionEntry) string {
 // "-Users-ryan-Projects-cc2md") to a human-readable path (e.g.
 // "/Users/ryan/Projects/cc2md"). Names that do not start with "-" are
 // returned unchanged.
+//
+// A doubled separator marks a segment beginning with '.', so
+// "-Users-ryan--dotfiles" decodes to "/Users/ryan/.dotfiles" rather than
+// "/Users/ryan//dotfiles".
+//
+// The encoding is lossy and this decode is best-effort: a literal '-' in a
+// directory name is indistinguishable from a separator, so
+// "-Users-ryan-Projects-bookmark-forge-web" decodes to
+// ".../bookmark/forge/web". Callers with a real cwd should prefer it —
+// hook.ProjectSlug does, falling back here only when no cwd is available.
 func DecodeProjectName(encoded string) string {
-	if strings.HasPrefix(encoded, "-") {
-		return strings.ReplaceAll(encoded, "-", "/")
+	if !strings.HasPrefix(encoded, "-") {
+		return encoded
 	}
-	return encoded
+	const dotSentinel = "\x00"
+	s := strings.ReplaceAll(encoded, "--", dotSentinel)
+	s = strings.ReplaceAll(s, "-", "/")
+	return strings.ReplaceAll(s, dotSentinel, "/.")
 }
 
 // claudeConfigDir returns the Claude config directory, honoring the

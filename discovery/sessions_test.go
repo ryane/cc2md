@@ -426,3 +426,28 @@ func TestExtractFirstUserMessage_StillStripsTags(t *testing.T) {
 		t.Errorf("cleaned extraction should strip tags, got %q", got)
 	}
 }
+
+func TestDecodeProjectName_DottedDirectory(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"dotted segment", "-Users-ryan--dotfiles", "/Users/ryan/.dotfiles"},
+		{"plain path", "-Users-ryan-Projects-cc2md", "/Users/ryan/Projects/cc2md"},
+		{"single segment", "-Users-ryan-org", "/Users/ryan/org"},
+		{"two dotted segments", "-Users-ryan--dotfiles--workspaces-x", "/Users/ryan/.dotfiles/.workspaces/x"},
+		// Regression guards: names without the leading "-" are returned
+		// verbatim. hook.ProjectSlug feeds unencoded directory names through
+		// this function, so dropping the prefix check corrupts them.
+		{"unencoded hyphenated name", "normal-name", "normal-name"},
+		{"unencoded single word", "singleword", "singleword"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DecodeProjectName(tt.in); got != tt.want {
+				t.Errorf("DecodeProjectName(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
