@@ -189,6 +189,29 @@ Set `--tool-output=false` to keep each tool call's one-line header (so you can s
 
 The hook always exits 0; errors and a one-line `cc2md hook: wrote <path>` confirmation go to stderr.
 
+### Frontmatter
+
+Hook-written notes carry YAML frontmatter for querying in Obsidian:
+
+```yaml
+---
+type: session
+title: "Retire cesium atticd SQLite database"
+date: 2026-09-12
+journal: "[[2026-09-12]]"
+project: dotfiles
+model: claude-opus-5
+session: 5c3ef91f-ed30-4413-a676-8f4961e4b459
+cc_version: v2.1.263
+---
+```
+
+`date` is a bare date so Obsidian Bases can sort on it; `journal` repeats it as a wikilink to
+the daily note. `title` is derived from the first user message — for slash-command sessions it
+uses the command's arguments, and for a vault-note path it uses the note's basename.
+
+Only `cc2md hook` emits frontmatter; `cc2md --raw` and the interactive picker are unchanged.
+
 **Manual alternative** (no subcommand, just jq):
 
 ```json
