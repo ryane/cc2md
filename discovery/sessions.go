@@ -147,13 +147,29 @@ func ExtractFirstUserMessage(filePath string, maxLen int) string {
 	return ""
 }
 
-// ExtractFirstUserMessageRaw returns the first user message verbatim — XML tags
-// intact, untruncated. Title derivation needs this because <command-args>
-// carries the topic for slash-command sessions, and stripXMLTags discards it.
+// ExtractFirstUserMessageRaw returns the first user message that carries usable
+// title text, verbatim — XML tags intact, untruncated. Title derivation needs
+// this because <command-args> carries the topic for slash-command sessions, and
+// stripXMLTags discards it.
+//
+// Messages that contribute nothing are skipped, mirroring ExtractFirstUserMessage:
+// sessions frequently open with a <local-command-caveat> block that strips to
+// nothing, and returning it verbatim would shadow the real opener on the next
+// line. A message counts as usable if it has non-empty <command-args> or any
+// text surviving stripXMLTags. When nothing qualifies, the first message is
+// returned so a caveat-only session still derives its sentinel.
 func ExtractFirstUserMessageRaw(filePath string) string {
 	msgs := extractUserMessages(filePath)
 	if len(msgs) == 0 {
 		return ""
+	}
+	for _, raw := range msgs {
+		if m := reTitleCommandArgs.FindStringSubmatch(raw); m != nil && strings.TrimSpace(m[1]) != "" {
+			return raw
+		}
+		if strings.TrimSpace(stripXMLTags(raw)) != "" {
+			return raw
+		}
 	}
 	return msgs[0]
 }
