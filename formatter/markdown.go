@@ -16,6 +16,10 @@ type FormatOptions struct {
 	// OmitToolOutput drops tool-call result blocks, keeping only the
 	// one-line headers. Zero value keeps output.
 	OmitToolOutput bool
+	// Frontmatter, when non-nil, prepends a YAML frontmatter block to the
+	// rendered session. Only the hook path sets it; stdout and TUI rendering
+	// leave it nil so their output is unchanged.
+	Frontmatter *FrontmatterFields
 }
 
 func FormatSession(meta parser.SessionMetadata, turns []parser.ConversationTurn, opts FormatOptions) string {
@@ -67,7 +71,11 @@ func FormatSession(meta parser.SessionMetadata, turns []parser.ConversationTurn,
 		}
 	}
 
-	return strings.Join(sections, "\n\n") + "\n"
+	out := strings.Join(sections, "\n\n") + "\n"
+	if opts.Frontmatter != nil {
+		return FormatFrontmatter(*opts.Frontmatter) + out
+	}
+	return out
 }
 
 func formatTimestamp(iso string) string {

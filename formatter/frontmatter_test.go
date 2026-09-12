@@ -3,6 +3,8 @@ package formatter
 import (
 	"strings"
 	"testing"
+
+	"github.com/magarcia/ccsession-viewer/parser"
 )
 
 func TestFormatFrontmatter_AllFields(t *testing.T) {
@@ -79,5 +81,30 @@ func TestFormatFrontmatter_NoDateOmitsJournal(t *testing.T) {
 	}
 	if strings.Contains(got, "date:") {
 		t.Errorf("date should be omitted when empty, got:\n%s", got)
+	}
+}
+
+func TestFormatSession_IncludesFrontmatterWhenRequested(t *testing.T) {
+	opts := FormatOptions{
+		Flavor: FlavorObsidian,
+		Frontmatter: &FrontmatterFields{
+			Title: "a test session",
+			Date:  "2026-09-12",
+		},
+	}
+	got := FormatSession(parser.SessionMetadata{}, nil, opts)
+
+	if !strings.HasPrefix(got, "---\ntype: session\n") {
+		t.Errorf("expected frontmatter at the very start, got:\n%.120s", got)
+	}
+	if !strings.Contains(got, "\n# Session\n") {
+		t.Errorf("expected the Session heading to survive, got:\n%.200s", got)
+	}
+}
+
+func TestFormatSession_OmitsFrontmatterByDefault(t *testing.T) {
+	got := FormatSession(parser.SessionMetadata{}, nil, FormatOptions{Flavor: FlavorObsidian})
+	if strings.HasPrefix(got, "---") {
+		t.Errorf("frontmatter should be opt-in, got:\n%.120s", got)
 	}
 }

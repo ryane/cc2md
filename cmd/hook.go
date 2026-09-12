@@ -175,15 +175,6 @@ func runHook(cmd *cobra.Command, args []string) error {
 	}
 	meta := parser.ExtractMetadata(lines)
 	turns := parser.BuildTurns(lines)
-	md := formatter.FormatSession(meta, turns, formatter.FormatOptions{
-		IncludeThinking: cfg.Thinking,
-		Collapse:        cfg.Collapse,
-		MaxLines:        cfg.MaxLines,
-		Flavor:          flavor,
-		OmitToolOutput:  !cfg.ToolOutput,
-	})
-
-	titleSlug := hook.SlugifyTitle(discovery.ExtractFirstUserMessage(transcript, 60))
 	// Prefer the real working directory for the project folder name: it is
 	// unambiguous (preserves hyphens), unlike the lossy encoded transcript
 	// path. Use the hook payload's cwd when present, else the cwd recorded in
@@ -193,6 +184,28 @@ func runHook(cmd *cobra.Command, args []string) error {
 	if cwd == "" {
 		cwd = meta.WorkingDirectory
 	}
+
+	title := discovery.DeriveTitle(transcript)
+
+	md := formatter.FormatSession(meta, turns, formatter.FormatOptions{
+		IncludeThinking: cfg.Thinking,
+		Collapse:        cfg.Collapse,
+		MaxLines:        cfg.MaxLines,
+		Flavor:          flavor,
+		OmitToolOutput:  !cfg.ToolOutput,
+		Frontmatter: &formatter.FrontmatterFields{
+			Title:     title,
+			Date:      date.Format("2006-01-02"),
+			Project:   hook.ProjectSlug(cwd, transcript),
+			Model:     meta.Model,
+			SessionID: sessionID,
+			Version:   meta.Version,
+		},
+	})
+
+	// titleSlug keeps using the cleaned extractor so filenames are unchanged;
+	// only frontmatter gets the derived title.
+	titleSlug := hook.SlugifyTitle(discovery.ExtractFirstUserMessage(transcript, 60))
 	target := hook.OutputPath(cfg.Dir, cwd, transcript, sessionID, titleSlug, date)
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		fmt.Fprintf(os.Stderr, "cc2md hook: mkdir %s: %v\n", filepath.Dir(target), err)
