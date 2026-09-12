@@ -129,16 +129,49 @@ func readSessionName(sessionNamesDir, sessionID string) string {
 
 // ExtractFirstUserMessage reads the first user message from a JSONL file
 // and returns a cleaned, truncated version suitable as a session name.
+//
+// Unlike ExtractFirstUserMessageRaw, this skips messages that are empty *after*
+// tag stripping (e.g. an opener consisting solely of
+// <local-command-caveat>…</local-command-caveat>) and continues to the next
+// candidate, preserving the original single-pass behavior.
 func ExtractFirstUserMessage(filePath string, maxLen int) string {
+	for _, raw := range extractUserMessages(filePath) {
+		text := stripXMLTags(raw)
+		text = strings.Join(strings.Fields(text), " ")
+		text = strings.TrimSpace(text)
+		if text == "" {
+			continue
+		}
+		return internal.TruncateString(text, maxLen)
+	}
+	return ""
+}
+
+// ExtractFirstUserMessageRaw returns the first user message verbatim — XML tags
+// intact, untruncated. Title derivation needs this because <command-args>
+// carries the topic for slash-command sessions, and stripXMLTags discards it.
+func ExtractFirstUserMessageRaw(filePath string) string {
+	msgs := extractUserMessages(filePath)
+	if len(msgs) == 0 {
+		return ""
+	}
+	return msgs[0]
+}
+
+// extractUserMessages returns the raw text of each user message in the first 20
+// lines of a JSONL file, in order, skipping entries that are blank before any
+// cleaning. Callers apply their own filtering.
+func extractUserMessages(filePath string) []string {
 	f, err := os.Open(filePath)
 	if err != nil {
-		return ""
+		return nil
 	}
 	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 2*1024*1024)
 
+	var out []string
 	// Only scan the first 20 lines to keep it fast.
 	for i := 0; i < 20 && scanner.Scan(); i++ {
 		line := scanner.Bytes()
@@ -165,29 +198,21 @@ func ExtractFirstUserMessage(filePath string, maxLen int) string {
 		if err := json.Unmarshal(jl.Message, &msg); err != nil {
 			continue
 		}
-		if len(msg.Content) == 0 {
-			continue
-		}
 
 		// Only handle string content, skip arrays.
-		if msg.Content[0] != '"' {
+		if len(msg.Content) == 0 || msg.Content[0] != '"' {
 			continue
 		}
 		var text string
 		if err := json.Unmarshal(msg.Content, &text); err != nil {
 			continue
 		}
-
-		text = stripXMLTags(text)
-		text = strings.Join(strings.Fields(text), " ")
-		text = strings.TrimSpace(text)
-		if text == "" {
+		if strings.TrimSpace(text) == "" {
 			continue
 		}
-
-		return internal.TruncateString(text, maxLen)
+		out = append(out, text)
 	}
-	return ""
+	return out
 }
 
 // stripXMLTags removes known XML tags from user message content.

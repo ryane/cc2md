@@ -395,3 +395,34 @@ func writeFile(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestExtractFirstUserMessageRaw_KeepsCommandArgs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "s.jsonl")
+	line := `{"type":"user","message":{"content":"<command-name>/ship-task</command-name><command-args>Areas/dotfiles/Research agent-browser for cobalt.md</command-args>"}}`
+	if err := os.WriteFile(path, []byte(line+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := ExtractFirstUserMessageRaw(path)
+	if !strings.Contains(got, "Research agent-browser for cobalt.md") {
+		t.Errorf("raw extraction lost the command args: %q", got)
+	}
+	if !strings.Contains(got, "<command-args>") {
+		t.Errorf("raw extraction should preserve tags, got %q", got)
+	}
+}
+
+func TestExtractFirstUserMessage_StillStripsTags(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "s.jsonl")
+	line := `{"type":"user","message":{"content":"<command-name>/ship-task</command-name><command-args>some task.md</command-args>"}}`
+	if err := os.WriteFile(path, []byte(line+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := ExtractFirstUserMessage(path, 60)
+	if strings.Contains(got, "<command-args>") {
+		t.Errorf("cleaned extraction should strip tags, got %q", got)
+	}
+}
