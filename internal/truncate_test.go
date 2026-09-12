@@ -1,6 +1,9 @@
 package internal
 
-import "testing"
+import (
+	"testing"
+	"unicode/utf8"
+)
 
 func TestTruncateLines_WithinLimit(t *testing.T) {
 	text := "line1\nline2\nline3"
@@ -73,5 +76,37 @@ func TestTruncateString_ExactlyAtLimit(t *testing.T) {
 func TestTruncateString_ExceedingLimit(t *testing.T) {
 	if got := TruncateString("hello world", 5); got != "hello..." {
 		t.Errorf("expected 'hello...', got %q", got)
+	}
+}
+
+func TestTruncateString_MultiByteBoundary(t *testing.T) {
+	// "…" is 3 bytes (e2 80 a6). Truncating to 1 byte must not emit a
+	// partial rune — the archive corruption came from exactly this case.
+	got := TruncateString("a…bcdef", 2)
+	if !utf8.ValidString(got) {
+		t.Errorf("result is not valid UTF-8: %q (% x)", got, got)
+	}
+	if got != "a..." {
+		t.Errorf("expected %q, got %q", "a...", got)
+	}
+}
+
+func TestTruncateString_EmojiBoundary(t *testing.T) {
+	// "🕓" is 4 bytes (f0 9f 95 93).
+	got := TruncateString("🕓🕓", 6)
+	if !utf8.ValidString(got) {
+		t.Errorf("result is not valid UTF-8: %q (% x)", got, got)
+	}
+	if got != "🕓..." {
+		t.Errorf("expected %q, got %q", "🕓...", got)
+	}
+}
+
+func TestTruncateString_ASCIIUnchanged(t *testing.T) {
+	if got := TruncateString("hello", 10); got != "hello" {
+		t.Errorf("expected %q, got %q", "hello", got)
+	}
+	if got := TruncateString("hello world", 5); got != "hello..." {
+		t.Errorf("expected %q, got %q", "hello...", got)
 	}
 }
